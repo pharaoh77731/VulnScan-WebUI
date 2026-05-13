@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VulnScan Pro — Vulnerability Assessment Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #080c10; --surface: #0d1117; --surface2: #161b22;
+      --border: #21262d; --accent: #00ff9d; --accent2: #0ea5e9;
+      --warn: #f59e0b; --danger: #ef4444; --critical: #dc2626;
+      --high: #f97316; --medium: #eab308; --low: #22c55e; --info: #64748b;
+      --text: #e6edf3; --muted: #7d8590;
+      --mono: 'Share Tech Mono', monospace; --sans: 'Rajdhani', sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; min-height: 100vh; overflow-x: hidden; }
+    body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,157,0.015) 2px,rgba(0,255,157,0.015) 4px); pointer-events:none; z-index:999; }
+
+    header { border-bottom:1px solid var(--border); background:var(--surface); padding:0 2rem; display:flex; align-items:center; justify-content:space-between; height:60px; position:sticky; top:0; z-index:100; }
+    .logo { display:flex; align-items:center; gap:12px; }
+    .logo-icon { width:32px; height:32px; border:2px solid var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--accent); font-size:14px; font-family:var(--mono); animation:flicker 4s infinite; }
+    @keyframes flicker { 0%,95%,100%{opacity:1} 96%{opacity:0.4} 97%{opacity:1} 98%{opacity:0.6} }
+    .logo-text { font-size:1.2rem; font-weight:700; letter-spacing:2px; }
+    .logo-text span { color:var(--accent); }
+    .header-right { display:flex; align-items:center; gap:1rem; }
+    .status-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 6px var(--accent); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+    .status-label { font-family:var(--mono); font-size:12px; color:var(--muted); }
+    .version { font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+    .container { max-width:1400px; margin:0 auto; padding:2rem; }
+
+    /* ── Tabs ── */
+    .tabs { display:flex; gap:4px; margin-bottom:1.5rem; border-bottom:1px solid var(--border); }
+    .tab { padding:0.6rem 1.4rem; font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; border:none; background:transparent; color:var(--muted); border-bottom:2px solid transparent; transition:all 0.2s; margin-bottom:-1px; }
+    .tab:hover { color:var(--text); }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* ── Scan Panel ── */
+    .scan-panel { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem 2rem; margin-bottom:2rem; position:relative; overflow:hidden; }
+    .scan-panel::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:sweep 3s ease-in-out infinite; }
+    @keyframes sweep { 0%,100%{opacity:0;transform:translateX(-100%)} 50%{opacity:1;transform:translateX(0)} }
+    .panel-title { font-size:0.75rem; letter-spacing:3px; text-transform:uppercase; color:var(--accent); font-family:var(--mono); margin-bottom:1.2rem; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:1rem; align-items:end; }
+    .form-grid-web { display:grid; grid-template-columns:1fr auto; gap:1rem; align-items:end; }
+    .form-group { display:flex; flex-direction:column; gap:6px; }
+    label { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-family:var(--mono); }
+    input, select { background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--text); padding:0.55rem 0.75rem; font-family:var(--mono); font-size:13px; outline:none; transition:border-color 0.2s; width:100%; }
+    input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(0,255,157,0.1); }
+    select option { background:var(--surface); }
+    .api-key-row { display:grid; grid-template-columns:1fr 1fr auto; gap:1rem; margin-top:1rem; align-items:end; }
+    .checkbox-group { display:flex; align-items:center; gap:8px; margin-top:1rem; }
+    .checkbox-group input[type=checkbox] { width:auto; accent-color:var(--accent); }
+    .checkbox-group label { font-size:12px; letter-spacing:1px; cursor:pointer; margin:0; }
+
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:0.55rem 1.4rem; border-radius:4px; font-family:var(--mono); font-size:13px; font-weight:600; letter-spacing:1px; cursor:pointer; border:none; transition:all 0.2s; white-space:nowrap; }
+    .btn-primary { background:var(--accent); color:#000; }
+    .btn-primary:hover { filter:brightness(1.1); box-shadow:0 0 16px rgba(0,255,157,0.3); }
+    .btn-primary:disabled { opacity:0.5; cursor:not-allowed; filter:none; box-shadow:none; }
+    .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+    .btn-ghost:hover { border-color:var(--muted); color:var(--text); }
+    .btn-download { background:rgba(14,165,233,0.15); color:var(--accent2); border:1px solid rgba(14,165,233,0.3); }
+    .btn-download:hover { background:rgba(14,165,233,0.25); }
+
+    /* ── Stats ── */
+    .stats-row { display:grid; grid-template-columns:repeat(6,1fr); gap:1rem; margin-bottom:2rem; }
+    .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; text-align:center; transition:border-color 0.2s; }
+    .stat-value { font-size:2rem; font-weight:700; font-family:var(--mono); line-height:1; }
+    .stat-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:4px; }
+    .stat-critical .stat-value{color:var(--critical)} .stat-high .stat-value{color:var(--high)}
+    .stat-medium .stat-value{color:var(--medium)} .stat-low .stat-value{color:var(--low)}
+    .stat-info .stat-value{color:var(--info)} .stat-score .stat-value{color:var(--accent2)}
+
+    /* ── Scan Status ── */
+    .scan-status { display:none; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem 2rem; margin-bottom:2rem; }
+    .scan-status.visible { display:block; }
+    .status-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .scanning-indicator { display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:13px; color:var(--accent); }
+    .spin { width:16px; height:16px; border:2px solid rgba(0,255,157,0.2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .progress-bar-wrap { background:var(--bg); border-radius:4px; height:6px; overflow:hidden; }
+    .progress-bar { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:4px; width:0%; transition:width 0.5s ease; box-shadow:0 0 8px var(--accent); }
+    .scan-log { margin-top:1rem; font-family:var(--mono); font-size:11px; color:var(--muted); max-height:80px; overflow-y:auto; }
+    .log-line { padding:1px 0; } .log-line span{color:var(--accent)}
+
+    /* ── Results ── */
+    .results-section { display:none; }
+    .results-section.visible { display:block; }
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .section-title { font-size:0.75rem; letter-spacing:3px; text-transform:uppercase; color:var(--accent); font-family:var(--mono); }
+
+    /* ── Host card ── */
+    .host-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:1.5rem; overflow:hidden; animation:fadeUp 0.3s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .host-header { padding:1rem 1.5rem; background:var(--surface2); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; }
+    .host-ip { font-family:var(--mono); font-size:1rem; font-weight:600; }
+    .host-meta { font-size:12px; color:var(--muted); font-family:var(--mono); }
+    .host-badges { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .badge { padding:2px 10px; border-radius:4px; font-size:11px; font-family:var(--mono); letter-spacing:1px; font-weight:600; }
+    .badge-critical{background:rgba(220,38,38,0.15);color:var(--critical);border:1px solid rgba(220,38,38,0.3)}
+    .badge-high{background:rgba(249,115,22,0.15);color:var(--high);border:1px solid rgba(249,115,22,0.3)}
+    .badge-medium{background:rgba(234,179,8,0.15);color:var(--medium);border:1px solid rgba(234,179,8,0.3)}
+    .badge-low{background:rgba(34,197,94,0.15);color:var(--low);border:1px solid rgba(34,197,94,0.3)}
+    .badge-info{background:rgba(100,116,139,0.15);color:var(--info);border:1px solid rgba(100,116,139,0.3)}
+
+    .port-table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th { padding:0.6rem 1rem; text-align:left; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-family:var(--mono); border-bottom:1px solid var(--border); background:var(--bg); white-space:nowrap; }
+    td { padding:0.65rem 1rem; border-bottom:1px solid var(--border); font-size:13px; vertical-align:top; }
+    tr:last-child td{border-bottom:none} tr:hover td{background:rgba(255,255,255,0.02)}
+    .port-num{font-family:var(--mono);color:var(--accent2)} .service-name{font-family:var(--mono)} .version-str{font-family:var(--mono);font-size:11px;color:var(--muted)}
+    .cve-list{display:flex;flex-direction:column;gap:4px}
+    .cve-item{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px}
+    .cve-id{color:var(--accent2);text-decoration:none} .cve-id:hover{text-decoration:underline}
+    .cve-score{padding:1px 6px;border-radius:3px;font-size:10px;background:rgba(239,68,68,0.15);color:#f87171}
+    .cve-score.high{background:rgba(249,115,22,0.15);color:#fb923c} .cve-score.medium{background:rgba(234,179,8,0.15);color:#fbbf24} .cve-score.low{background:rgba(34,197,94,0.15);color:#4ade80}
+    .remediation-text{font-size:12px;color:var(--muted);line-height:1.5;max-width:260px}
+    .banner-text{font-size:10px;color:var(--muted);font-family:var(--mono);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    /* ── Web Findings ── */
+    .web-section { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:1.5rem; overflow:hidden; }
+    .web-section-header { padding:0.75rem 1.2rem; background:var(--surface2); border-bottom:1px solid var(--border); font-family:var(--mono); font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); }
+    .web-row { display:flex; align-items:flex-start; justify-content:space-between; padding:0.75rem 1.2rem; border-bottom:1px solid var(--border); gap:1rem; flex-wrap:wrap; }
+    .web-row:last-child{border-bottom:none}
+    .web-row-title{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text)}
+    .web-row-desc{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+    .web-row-fix{font-size:11px;color:var(--accent2);margin-top:4px;font-family:var(--mono)}
+    .subdomain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;padding:1rem 1.2rem}
+    .subdomain-item{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 10px;font-family:var(--mono);font-size:11px}
+    .subdomain-item strong{color:var(--accent2)}
+
+    /* ── Jobs ── */
+    .jobs-panel { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:2rem; overflow:hidden; }
+    .jobs-header { padding:0.75rem 1rem; border-bottom:1px solid var(--border); background:var(--surface2); display:flex; align-items:center; justify-content:space-between; }
+    .job-list { max-height:200px; overflow-y:auto; }
+    .job-item { display:flex; align-items:center; justify-content:space-between; padding:0.6rem 1rem; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.15s; gap:0.5rem; }
+    .job-item:last-child{border-bottom:none} .job-item:hover{background:rgba(255,255,255,0.03)}
+    .job-target{font-family:var(--mono);font-size:12px} .job-time{font-family:var(--mono);font-size:11px;color:var(--muted)}
+    .status-pill{padding:2px 8px;border-radius:100px;font-size:10px;font-family:var(--mono)}
+    .status-queued{background:rgba(100,116,139,0.2);color:var(--muted)} .status-running{background:rgba(14,165,233,0.15);color:var(--accent2)}
+    .status-completed{background:rgba(0,255,157,0.12);color:var(--accent)} .status-failed{background:rgba(239,68,68,0.15);color:#f87171}
+    .job-actions{display:flex;gap:6px;align-items:center}
+
+    .empty-state{text-align:center;padding:4rem 2rem;color:var(--muted);font-family:var(--mono);font-size:13px}
+    .empty-icon{font-size:2.5rem;margin-bottom:1rem;opacity:0.4}
+    .error-box{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:1rem 1.5rem;font-family:var(--mono);font-size:13px;margin-bottom:1.5rem;display:none}
+    .error-box.visible{display:block}
+    .report-meta{display:flex;align-items:center;gap:2rem;font-family:var(--mono);font-size:11px;color:var(--muted);flex-wrap:wrap}
+    .meta-item span{color:var(--text)}
+    ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:var(--bg)} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px} ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+    @media(max-width:900px){.form-grid{grid-template-columns:1fr 1fr}.stats-row{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:600px){.form-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:repeat(2,1fr)}.container{padding:1rem}.api-key-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">VS</div>
+    <div class="logo-text">Vuln<span>Scan</span> Pro</div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <div class="status-label" id="healthStatus">checking...</div>
+    <div class="version">v3.0.0</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('network')">▸ Network Scan</button>
+    <button class="tab" onclick="switchTab('web')">▸ Web Scan</button>
+    <button class="tab" onclick="switchTab('history')">▸ Scan History</button>
+  </div>
+
+  <!-- ── NETWORK SCAN TAB ── -->
+  <div class="tab-content active" id="tab-network">
+
+    <div class="scan-panel">
+      <div class="panel-title">▸ Network Scan — Port Discovery + CVE Mapping</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Target (IP / Hostname / CIDR)</label>
+          <input type="text" id="targetInput" placeholder="192.168.1.1 or scanme.nmap.org" />
+        </div>
+        <div class="form-group">
+          <label>Port Range</label>
+          <input type="text" id="portsInput" placeholder="1-1024 or 22,80,443" />
+        </div>
+        <div class="form-group">
+          <label>Scan Profile</label>
+          <select id="scanType">
+            <option value="quick">Quick — Top 100 ports</option>
+            <option value="standard" selected>Standard — Ports 1-1024</option>
+            <option value="full">Full — All 65535 ports</option>
+            <option value="stealth">Stealth — SYN scan</option>
+            <option value="vuln">Vuln Scripts — NSE scripts</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="scanBtn" onclick="submitScan()">▶ SCAN</button>
+      </div>
+      <div class="api-key-row">
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="apiKeyInput" placeholder="X-API-Key" value="change-this-secret-key-in-production" />
+        </div>
+        <div class="form-group">
+          <label>Options</label>
+          <div class="checkbox-group">
+            <input type="checkbox" id="includeWeb" />
+            <label for="includeWeb">Also run web scan on target</label>
+          </div>
+        </div>
+        <button class="btn btn-ghost" onclick="checkHealth()">◉ Health Check</button>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="scan-status" id="scanStatus">
+      <div class="status-header">
+        <div class="scanning-indicator">
+          <div class="spin"></div>
+          <span id="scanStatusText">Initializing scan...</span>
+        </div>
+        <div class="report-meta" id="scanMeta"></div>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="scan-log" id="scanLog"></div>
+    </div>
+
+    <div id="statsRow" class="stats-row" style="display:none">
+      <div class="stat-card stat-critical"><div class="stat-value" id="statCritical">0</div><div class="stat-label">Critical</div></div>
+      <div class="stat-card stat-high"><div class="stat-value" id="statHigh">0</div><div class="stat-label">High</div></div>
+      <div class="stat-card stat-medium"><div class="stat-value" id="statMedium">0</div><div class="stat-label">Medium</div></div>
+      <div class="stat-card stat-low"><div class="stat-value" id="statLow">0</div><div class="stat-label">Low</div></div>
+      <div class="stat-card stat-info"><div class="stat-value" id="statCVEs">0</div><div class="stat-label">CVEs Found</div></div>
+      <div class="stat-card stat-score"><div class="stat-value" id="statScore">—</div><div class="stat-label">Risk Score</div></div>
+    </div>
+
+    <div class="results-section" id="resultsSection">
+      <div class="section-header">
+        <div class="section-title">▸ Findings</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="report-meta" id="reportMeta"></div>
+          <button class="btn btn-download" id="downloadBtn" style="display:none" onclick="downloadReport()">⬇ Download Report</button>
+        </div>
+      </div>
+      <div id="resultsContainer"></div>
+      <div id="webResultsContainer"></div>
+    </div>
+  </div>
+
+  <!-- ── WEB SCAN TAB ── -->
+  <div class="tab-content" id="tab-web">
+
+    <div class="scan-panel">
+      <div class="panel-title">▸ Web Application Scan — Headers · SSL · Paths · Subdomains</div>
+      <div class="form-grid-web">
+        <div class="form-group">
+          <label>Target URL or Domain</label>
+          <input type="text" id="webTargetInput" placeholder="example.com or https://example.com" />
+        </div>
+        <button class="btn btn-primary" id="webScanBtn" onclick="submitWebScan()">▶ SCAN</button>
+      </div>
+      <div style="margin-top:1rem">
+        <div class="form-group" style="max-width:360px">
+          <label>API Key</label>
+          <input type="password" id="webApiKeyInput" placeholder="X-API-Key" value="change-this-secret-key-in-production" />
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="webErrorBox"></div>
+
+    <div class="scan-status" id="webScanStatus">
+      <div class="status-header">
+        <div class="scanning-indicator">
+          <div class="spin"></div>
+          <span>Running web scan...</span>
+        </div>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="webProgressBar" style="width:0%"></div></div>
+    </div>
+
+    <div id="webScanResults"></div>
+  </div>
+
+  <!-- ── HISTORY TAB ── -->
+  <div class="tab-content" id="tab-history">
+    <div class="jobs-panel">
+      <div class="jobs-header">
+        <div class="section-title">▸ Scan History</div>
+        <button class="btn btn-ghost" style="padding:2px 10px;font-size:11px" onclick="loadJobs()">↺ Refresh</button>
+      </div>
+      <div class="job-list" id="jobList">
+        <div class="empty-state" style="padding:2rem"><div class="empty-icon">📋</div>No scans yet. Run a scan to see history.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API_BASE = window.location.origin;
+  let currentJobId = null;
+  let pollInterval = null;
+  let currentApiKey = () => document.getElementById('apiKeyInput').value.trim();
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['network','web','history'][i] === name));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`tab-${name}`).classList.add('active');
+    if (name === 'history') loadJobs();
+  }
+
+  // ── Health Check ──────────────────────────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const res = await fetch(`${API_BASE}/api/health`);
+      const data = await res.json();
+      const el = document.getElementById('healthStatus');
+      if (data.status === 'ok') {
+        el.textContent = `online · nmap ${data.nmap_version} · jobs: ${data.active_jobs}`;
+        el.style.color = 'var(--accent)';
+      } else { el.textContent = 'degraded'; el.style.color = 'var(--warn)'; }
+    } catch {
+      const el = document.getElementById('healthStatus');
+      el.textContent = 'offline'; el.style.color = 'var(--danger)';
+    }
+  }
+
+  // ── Network Scan ──────────────────────────────────────────────────────────
+  async function submitScan() {
+    const target     = document.getElementById('targetInput').value.trim();
+    const ports      = document.getElementById('portsInput').value.trim();
+    const scanType   = document.getElementById('scanType').value;
+    const apiKey     = currentApiKey();
+    const includeWeb = document.getElementById('includeWeb').checked;
+
+    if (!target) { showError('Target is required.', 'errorBox'); return; }
+    if (!apiKey)  { showError('API key is required.', 'errorBox'); return; }
+
+    hideError('errorBox');
+    document.getElementById('scanBtn').disabled = true;
+    document.getElementById('downloadBtn').style.display = 'none';
+    showScanStatus(target, scanType);
+    document.getElementById('statsRow').style.display = 'none';
+    document.getElementById('resultsSection').classList.remove('visible');
+    document.getElementById('resultsContainer').innerHTML = '';
+    document.getElementById('webResultsContainer').innerHTML = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+        body: JSON.stringify({ target, ports, scan_type: scanType, include_web: includeWeb }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error || 'Scan failed.', 'errorBox'); hideScanStatus(); return; }
+      currentJobId = data.job_id;
+      addLog(`Job submitted → ${currentJobId}`);
+      addLog(`Target: ${target} | Profile: ${scanType}${includeWeb ? ' | +Web scan' : ''}`);
+      startPolling(apiKey);
+    } catch (e) { showError(`Network error: ${e.message}`, 'errorBox'); hideScanStatus(); }
+  }
+
+  function startPolling(apiKey) {
+    let progress = 5; setProgress(progress);
+    const phases = ['ARP ping sweep...','TCP SYN probe...','Service version detection...','Banner grabbing...','CVE correlation...','Web scan...','Risk scoring...'];
+    let phaseIdx = 0;
+    const phaseTimer = setInterval(() => {
+      if (phaseIdx < phases.length) { addLog(phases[phaseIdx++]); progress = Math.min(85, progress+10); setProgress(progress); }
+    }, 6000);
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/jobs/${currentJobId}`, { headers: { 'X-API-Key': apiKey } });
+        const job = await res.json();
+        if (job.status === 'completed') {
+          clearInterval(pollInterval); clearInterval(phaseTimer); setProgress(100);
+          addLog('✓ Scan complete. Rendering report...');
+          setTimeout(() => { hideScanStatus(); renderReport(job.report); loadJobs(); }, 800);
+        } else if (job.status === 'failed') {
+          clearInterval(pollInterval); clearInterval(phaseTimer);
+          showError(`Scan failed: ${job.error}`, 'errorBox'); hideScanStatus();
+        }
+      } catch (e) { clearInterval(pollInterval); clearInterval(phaseTimer); showError(`Polling error: ${e.message}`, 'errorBox'); hideScanStatus(); }
+    }, 3000);
+  }
+
+  function renderReport(report) {
+    const s = report.executive_summary;
+    const m = report.report_metadata;
+    document.getElementById('statCritical').textContent = s.Critical;
+    document.getElementById('statHigh').textContent     = s.High;
+    document.getElementById('statMedium').textContent   = s.Medium;
+    document.getElementById('statLow').textContent      = s.Low;
+    document.getElementById('statCVEs').textContent     = s.total_cves_found;
+    document.getElementById('statScore').textContent    = s.risk_score + '/100';
+    document.getElementById('statsRow').style.display   = 'grid';
+    document.getElementById('reportMeta').innerHTML     = `
+      <div class="meta-item">Target: <span>${m.target}</span></div>
+      <div class="meta-item">Profile: <span>${m.scan_type}</span></div>
+      <div class="meta-item">Duration: <span>${m.duration_seconds}s</span></div>
+      <div class="meta-item">Generated: <span>${new Date(m.generated_at).toLocaleString()}</span></div>`;
+
+    const container = document.getElementById('resultsContainer');
+    container.innerHTML = '';
+    if (!report.findings || report.findings.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">⬡</div>No hosts responded.</div>`;
+    } else {
+      report.findings.forEach(host => container.appendChild(buildHostCard(host)));
+    }
+
+    // Web findings (if included)
+    if (report.web_findings) {
+      renderWebResults(report.web_findings, 'webResultsContainer');
+    }
+
+    document.getElementById('resultsSection').classList.add('visible');
+    document.getElementById('scanBtn').disabled = false;
+    if (currentJobId) document.getElementById('downloadBtn').style.display = 'inline-flex';
+  }
+
+  function buildHostCard(host) {
+    const card = document.createElement('div');
+    card.className = 'host-card';
+    const riskClass = (host.overall_risk || 'info').toLowerCase();
+    const portCount = host.ports.length;
+    card.innerHTML = `
+      <div class="host-header">
+        <div>
+          <div class="host-ip">${host.host}</div>
+          <div class="host-meta">${host.hostname && host.hostname !== host.host ? host.hostname + ' · ' : ''}${portCount} open port${portCount !== 1 ? 's' : ''} · OS: ${host.os_guess || 'Unknown'}</div>
+        </div>
+        <div class="host-badges">
+          <span class="badge badge-${riskClass}">${host.overall_risk}</span>
+          ${host.cve_count > 0 ? `<span class="badge badge-high">${host.cve_count} CVE${host.cve_count > 1 ? 's' : ''}</span>` : ''}
+        </div>
+      </div>
+      <div class="port-table-wrap">
+        ${portCount === 0 ? '<div class="empty-state" style="padding:2rem">No open ports found.</div>' : `
+        <table><thead><tr><th>Port</th><th>Service</th><th>Version</th><th>Risk</th><th>Banner</th><th>CVEs</th><th>Remediation</th></tr></thead>
+        <tbody>${host.ports.map(p => buildPortRow(p)).join('')}</tbody></table>`}
+      </div>`;
+    return card;
+  }
+
+  function buildPortRow(p) {
+    const riskClass = (p.risk || 'info').toLowerCase();
+    const cveHtml = p.cves && p.cves.length > 0
+      ? `<div class="cve-list">${p.cves.slice(0,3).map(c => {
+          const s = parseFloat(c.score);
+          const cls = s >= 9 ? '' : s >= 7 ? 'high' : s >= 4 ? 'medium' : 'low';
+          return `<div class="cve-item"><a class="cve-id" href="${c.url}" target="_blank" rel="noopener">${c.id}</a><span class="cve-score ${cls}">${c.score}</span></div>`;
+        }).join('')}</div>`
+      : '<span style="color:var(--muted);font-family:var(--mono);font-size:11px">—</span>';
+    return `<tr>
+      <td><span class="port-num">${p.port}/${p.protocol}</span></td>
+      <td><span class="service-name">${p.service}</span></td>
+      <td><span class="version-str">${p.version || '—'}</span></td>
+      <td><span class="badge badge-${riskClass}">${p.risk}</span></td>
+      <td><span class="banner-text" title="${p.banner || ''}">${p.banner ? p.banner.substring(0,40) + (p.banner.length > 40 ? '…' : '') : '—'}</span></td>
+      <td>${cveHtml}</td>
+      <td><div class="remediation-text">${p.remediation}</div></td>
+    </tr>`;
+  }
+
+  // ── Web Scan ──────────────────────────────────────────────────────────────
+  async function submitWebScan() {
+    const target = document.getElementById('webTargetInput').value.trim();
+    const apiKey = document.getElementById('webApiKeyInput').value.trim();
+    if (!target) { showError('Target is required.', 'webErrorBox'); return; }
+    if (!apiKey)  { showError('API key is required.', 'webErrorBox'); return; }
+    hideError('webErrorBox');
+    document.getElementById('webScanBtn').disabled = true;
+    document.getElementById('webScanStatus').classList.add('visible');
+    document.getElementById('webScanResults').innerHTML = '';
+    animateWebProgress();
+    try {
+      const res = await fetch(`${API_BASE}/api/scan/web`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+        body: JSON.stringify({ target }),
+      });
+      const data = await res.json();
+      document.getElementById('webScanStatus').classList.remove('visible');
+      document.getElementById('webScanBtn').disabled = false;
+      if (!res.ok) { showError(data.error || 'Web scan failed.', 'webErrorBox'); return; }
+      renderWebResults(data, 'webScanResults');
+    } catch (e) {
+      document.getElementById('webScanStatus').classList.remove('visible');
+      document.getElementById('webScanBtn').disabled = false;
+      showError(`Error: ${e.message}`, 'webErrorBox');
+    }
+  }
+
+  function animateWebProgress() {
+    const bar = document.getElementById('webProgressBar');
+    let p = 0;
+    const iv = setInterval(() => {
+      p = Math.min(90, p + Math.random() * 15);
+      bar.style.width = p + '%';
+      if (!document.getElementById('webScanStatus').classList.contains('visible')) {
+        bar.style.width = '100%'; clearInterval(iv);
+      }
+    }, 800);
+  }
+
+  function renderWebResults(data, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const headers = data.headers || {};
+    const ssl     = data.ssl;
+    const paths   = data.sensitive_paths || [];
+    const subs    = data.subdomains || [];
+    const methods = data.http_methods || {};
+
+    // Headers
+    const headerFindings = headers.findings || [];
+    const headerRows = headerFindings.map(f => `
+      <div class="web-row">
+        <div>
+          <div class="web-row-title">${f.header}</div>
+          <div class="web-row-desc">${f.issue}</div>
+          <div class="web-row-fix">→ ${f.fix}</div>
+        </div>
+        <span class="badge badge-${(f.risk||'info').toLowerCase()}">${f.risk}</span>
+      </div>`).join('') || `<div class="web-row"><div class="web-row-desc" style="color:var(--low)">✓ All security headers present</div></div>`;
+
+    // SSL
+    const sslHtml = ssl ? `
+      <div class="web-row">
+        <div>
+          <div class="web-row-title">SSL/TLS Certificate</div>
+          <div class="web-row-desc">Protocol: ${ssl.protocol || 'N/A'} · Expires: ${ssl.expires || 'N/A'} · Days remaining: ${ssl.days_left ?? 'N/A'}</div>
+          <div class="web-row-desc">${ssl.issue || ''}</div>
+        </div>
+        <span class="badge badge-${(ssl.risk||'info').toLowerCase()}">${ssl.risk || 'Info'}</span>
+      </div>` : `<div class="web-row"><div class="web-row-desc" style="color:var(--muted)">SSL check not performed (HTTP or IP target)</div></div>`;
+
+    // Paths
+    const pathRows = paths.map(p => `
+      <div class="web-row">
+        <div>
+          <div class="web-row-title" style="font-family:var(--mono)">${p.path}</div>
+          <div class="web-row-desc">HTTP ${p.status_code} — ${p.issue}</div>
+          <div class="web-row-fix">→ Restrict access via web server config or remove the file.</div>
+        </div>
+        <span class="badge badge-${(p.risk||'medium').toLowerCase()}">${p.risk}</span>
+      </div>`).join('') || `<div class="web-row"><div class="web-row-desc" style="color:var(--low)">✓ No sensitive paths exposed</div></div>`;
+
+    // Subdomains
+    const subHtml = subs.length > 0
+      ? `<div class="subdomain-grid">${subs.map(s => `<div class="subdomain-item"><strong>${s.subdomain}</strong><br>${s.ip}</div>`).join('')}</div>`
+      : `<div class="web-row"><div class="web-row-desc" style="color:var(--muted)">No subdomains discovered</div></div>`;
+
+    container.innerHTML = `
+      <div class="web-section">
+        <div class="web-section-header">▸ Security Headers (${headerFindings.length} issues · ${(headers.present_headers||[]).length} present)</div>
+        ${headerRows}
+      </div>
+      <div class="web-section">
+        <div class="web-section-header">▸ SSL / TLS Certificate</div>
+        ${sslHtml}
+      </div>
+      <div class="web-section">
+        <div class="web-section-header">▸ Sensitive Paths (${paths.length} accessible)</div>
+        ${pathRows}
+      </div>
+      <div class="web-section">
+        <div class="web-section-header">▸ Subdomains (${subs.length} found)</div>
+        ${subHtml}
+      </div>`;
+  }
+
+  // ── Download Report ───────────────────────────────────────────────────────
+  async function downloadReport() {
+    if (!currentJobId) return;
+    const apiKey = currentApiKey();
+    const res = await fetch(`${API_BASE}/api/jobs/${currentJobId}/report`, { headers: { 'X-API-Key': apiKey } });
+    if (!res.ok) { alert('Report not ready yet.'); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vulnscan_report.html`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  // ── Jobs History ──────────────────────────────────────────────────────────
+  async function loadJobs() {
+    const apiKey = currentApiKey() || document.getElementById('webApiKeyInput').value.trim();
+    if (!apiKey) return;
+    try {
+      const res  = await fetch(`${API_BASE}/api/jobs`, { headers: { 'X-API-Key': apiKey } });
+      const jobs = await res.json();
+      const list = document.getElementById('jobList');
+      if (!Array.isArray(jobs) || jobs.length === 0) {
+        list.innerHTML = `<div class="empty-state" style="padding:2rem"><div class="empty-icon">📋</div>No scans yet.</div>`;
+        return;
+      }
+      list.innerHTML = jobs.map(j => `
+        <div class="job-item">
+          <div onclick="loadJobReport('${j.job_id}')" style="flex:1">
+            <div class="job-target">${j.target} <span style="color:var(--muted);font-size:10px">[${j.scan_type}]</span></div>
+            <div class="job-time">${timeAgo(j.submitted_at)} · ${j.status}</div>
+          </div>
+          <div class="job-actions">
+            <span class="status-pill status-${j.status}">${j.status}</span>
+            ${j.status === 'completed' ? `<button class="btn btn-download" style="padding:2px 8px;font-size:10px" onclick="downloadJobReport('${j.job_id}')">⬇</button>` : ''}
+          </div>
+        </div>`).join('');
+    } catch {}
+  }
+
+  async function loadJobReport(jobId) {
+    const apiKey = currentApiKey();
+    if (!apiKey) return;
+    switchTab('network');
+    try {
+      const res = await fetch(`${API_BASE}/api/jobs/${jobId}`, { headers: { 'X-API-Key': apiKey } });
+      const job = await res.json();
+      if (job.status === 'completed' && job.report) {
+        currentJobId = jobId;
+        document.getElementById('statsRow').style.display = 'none';
+        document.getElementById('resultsSection').classList.remove('visible');
+        document.getElementById('resultsContainer').innerHTML = '';
+        document.getElementById('webResultsContainer').innerHTML = '';
+        renderReport(job.report);
+      }
+    } catch {}
+  }
+
+  async function downloadJobReport(jobId) {
+    const apiKey = currentApiKey();
+    const res = await fetch(`${API_BASE}/api/jobs/${jobId}/report`, { headers: { 'X-API-Key': apiKey } });
+    if (!res.ok) { alert('Report not available.'); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `vulnscan_${jobId.slice(0,8)}.html`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  // ── UI Helpers ────────────────────────────────────────────────────────────
+  function showError(msg, boxId) {
+    const el = document.getElementById(boxId);
+    el.textContent = '⚠ ' + msg; el.classList.add('visible');
+    document.getElementById('scanBtn').disabled = false;
+    if (document.getElementById('webScanBtn')) document.getElementById('webScanBtn').disabled = false;
+  }
+  function hideError(boxId) { document.getElementById(boxId).classList.remove('visible'); }
+  function showScanStatus(target, type) {
+    document.getElementById('scanStatusText').textContent = `Scanning ${target} [${type}]...`;
+    document.getElementById('scanStatus').classList.add('visible');
+    document.getElementById('scanLog').innerHTML = '';
+  }
+  function hideScanStatus() { document.getElementById('scanStatus').classList.remove('visible'); }
+  function setProgress(pct) { document.getElementById('progressBar').style.width = pct + '%'; }
+  function addLog(msg) {
+    const log  = document.getElementById('scanLog');
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> ${msg}`;
+    log.appendChild(line); log.scrollTop = log.scrollHeight;
+  }
+  function timeAgo(iso) {
+    const diff = (Date.now() - new Date(iso)) / 1000;
+    if (diff < 60) return `${Math.round(diff)}s ago`;
+    if (diff < 3600) return `${Math.round(diff/60)}m ago`;
+    return `${Math.round(diff/3600)}h ago`;
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  checkHealth();
+  setInterval(checkHealth, 30000);
+  document.getElementById('targetInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitScan(); });
+  document.getElementById('webTargetInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitWebScan(); });
+</script>
+</body>
+</html>
