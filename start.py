@@ -36,7 +36,7 @@ BANNER = f"""
  \\ \\ / /__ _ | | _ _ / ____|  ___  __ _  _ __ _ \\_
   \\ V // _` || || ' \\\\__ \\ / __|/ _` || '_ \\| '_  |
    \\_/ \\__,_||_||_||_|___/ \\___\\\\__,_||_| |_|_| |_|
-{RS}{DIM}  Web Dashboard Edition  |  v3.0.0
+{RS}{DIM}  Web Dashboard Edition  |  v3.0.0  |  pharaoh77731 
 {RS}"""
 
 VENV_DIR   = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv")
